@@ -8,7 +8,11 @@ module SolidQueue
 
     def self.non_blocking_lock
       if SolidQueue.use_skip_locked
-        lock(Arel.sql("FOR UPDATE SKIP LOCKED"))
+        if self.connection.adapter_name == 'SQLServer'
+          lock(Arel.sql("WITH(READPAST)"))
+        else
+          lock(Arel.sql("FOR UPDATE SKIP LOCKED"))
+        end
       else
         lock
       end
