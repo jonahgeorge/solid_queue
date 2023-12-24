@@ -34,7 +34,17 @@ module SolidQueue
         end
 
         def dispatch_at_once(jobs)
-          ReadyExecution.insert_all ready_rows_from_batch(jobs)
+          if self.connection.supports_insert_on_duplicate_skip?
+            ReadyExecution.insert_all ready_rows_from_batch(jobs)
+          else
+            ready_rows_from_batch(jobs).each do |job|
+              ReadyExecution.create_with(
+                queue_name: job[:queue_name],
+                priority: job[:priority],
+                created_at: job[:created_at]
+              ).find_or_create_by(job_id: job[:job_id])
+            end
+          end
         end
 
         def dispatch_one_by_one(jobs)

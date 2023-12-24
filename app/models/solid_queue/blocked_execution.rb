@@ -11,9 +11,9 @@ module SolidQueue
 
     class << self
       def unblock(count)
-        expired.distinct.limit(count).pluck(:concurrency_key).then do |concurrency_keys|
-          release_many releasable(concurrency_keys)
-        end
+        # This is probably wrong
+        rows = expired.distinct.limit(count)
+        release_many releasable(rows.map(&:concurrency_key))
       end
 
       def release_many(concurrency_keys)

@@ -13,7 +13,12 @@ class SolidQueue::ClaimedExecution < SolidQueue::Execution
     def claiming(job_ids, process_id, &block)
       job_data = Array(job_ids).collect { |job_id| { job_id: job_id, process_id: process_id } }
 
-      insert_all!(job_data)
+      if self.connection.supports_insert_on_duplicate_skip?
+        insert_all!(job_data)
+      else
+        job_data.each { |jd| create_with(process_id: jd[:process_id]).find_or_create_by!(job_id: jd[:job_id]) }
+      end
+
       where(job_id: job_ids, process_id: process_id).load.tap do |claimed|
         block.call(claimed)
         SolidQueue.logger.info("[SolidQueue] Claimed #{claimed.size} jobs")
